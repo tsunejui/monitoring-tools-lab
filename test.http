@@ -1,0 +1,49 @@
+### List Dashboard
+## curl --location --request GET 'http://{host}:3000/api/folders' \
+## --header 'Authorization: Bearer xxx'
+GET {{ host }}/api/folders
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{}
+
+###
+
+POST {{ host }}/api/ds/query
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+    "queries": [
+        {
+            "datasource": {
+                "type": "prometheus",
+                "uid": "PBFA97CFB590B2093"
+            },
+            "expr": "sum(rate(node_cpu_seconds_total[1m])) by (mode) * 100 / scalar(count(node_cpu_seconds_total{mode=\"user\"}))",
+            "intervalFactor": 10,
+            "legendFormat": "{{ mode }}",
+            "metric": "node_cpu_seconds_total",
+            "refId": "A",
+            "step": 10,
+            "queryType": "timeSeriesQuery",
+            "exemplar": false,
+            "requestId": "5A",
+            "utcOffsetSec": 28800,
+            "interval": "",
+            "datasourceId": 1,
+            "intervalMs": 15000,
+            "maxDataPoints": 427
+        }
+    ],
+    "range": {
+        "from": "2023-03-29T02:33:39.474Z",
+        "to": "2023-03-29T02:48:39.474Z",
+        "raw": {
+            "from": "now-15m",
+            "to": "now"
+        }
+    },
+    "from": "1680057219474",
+    "to": "1680058119474"
+}
