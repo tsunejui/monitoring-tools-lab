@@ -1,0 +1,75 @@
+@startuml arch
+
+agent "Node Exporter" as nx
+
+package "instance 1" {
+    agent "Prometheus 1" as pt1
+    agent "Thanos Sidecar 1" as s1 #FFBF00
+    folder "FS" as fs1 #palegreen
+}
+
+package "instance 2" {
+    agent "Prometheus 2" as pt2
+    agent "Thanos Sidecar 2" as s2 #FFBF00
+    folder "FS" as fs2 #palegreen
+}
+
+package "instance 3" {
+    agent "Prometheus 3" as pt3
+    agent "Thanos Sidecar 3" as s3 #FFBF00
+    folder "FS" as fs3 #palegreen
+}
+
+package "instance 4" {
+    agent "Prometheus 4" as pt4
+    agent "Thanos Sidecar 4" as s4 #FFBF00
+    folder "FS" as fs4 #palegreen
+}
+
+database "MINIO" as minio #ff00ff
+agent "Thanos Store Gateway" as gateway #ff00ff
+agent "Thanos Compactor" as compactor #ff00ff
+agent "Thanos Bucket Web" as bucket #ff00ff
+
+agent "Thanos Query" as query #FF6655
+agent "Thanos Query Frontend" as frontend #DFFF00
+agent "Thanos Ruler" as ruler #DFFF00
+agent "Alertmanager" as alertmanager
+agent "Grafana" as gf
+
+nx <-- pt1 : pull
+nx <-- pt2 : pull
+nx <-- pt3 : pull
+nx <-- pt4 : pull
+
+pt1 --> fs1 : store
+pt2 --> fs2 : store
+pt3 --> fs3 : store
+pt4 --> fs4 : store
+
+fs1 <-down- s1 : watch
+fs2 <-down- s2 : watch
+fs3 <-down- s3 : watch
+fs4 <-down- s4 : watch
+
+frontend -up-> query : query
+gateway -up-> minio : read
+compactor -up-> minio : downsampling
+bucket -up-> minio : read
+
+s1 -[#ff00ff]-> minio : upload
+s2 -[#ff00ff]-> minio : upload
+s3 -[#ff00ff]-> minio : upload
+s4 -[#ff00ff]-> minio : upload
+
+s1 <-[#FF6655]- query : query
+s2 <-[#FF6655]- query : query
+s3 <-[#FF6655]- query : query
+s4 <-[#FF6655]- query : query
+query -[#FF6655]-> gateway : query
+
+ruler -up-> query : eval
+ruler --> alertmanager : push
+gf -up-> frontend : query
+
+@enduml
