@@ -1,0 +1,337 @@
+---
+version: '3.2'
+
+x-prometheus-app: &prometheus-app
+    image: prom/prometheus:v2.43.0
+    links:
+      # - cadvisor:cadvisor
+      - alertmanager:alertmanager
+    command:
+        - '--config.file=/etc/prometheus/prometheus.yaml'
+        - '--storage.tsdb.path=/prometheus'
+        - '--storage.tsdb.retention.time=3m'
+        - '--storage.tsdb.max-block-duration=1m'
+        - '--storage.tsdb.min-block-duration=1m'
+        - '--web.enable-lifecycle'
+        - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+        - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - thanos-example
+    # depends_on:
+    #   - cadvisor
+    restart: always
+
+x-prometheus-volumes: &prometheus-volumes
+    ./prometheus/alert.rules:/etc/prometheus/alert.rules
+
+x-thanos-sidecar: &thanos-sidecar
+    image: quay.io/thanos/thanos:v0.31.0
+    restart: always
+    networks:
+      - thanos-example
+
+x-thanos-depends-on: &thanos-depends-on
+    minio
+
+x-thanos-volumes: &thanos-volumes
+    ./thanos/:/etc/thanos/
+
+services:
+    prometheus-1:
+        <<: *prometheus-app
+        volumes:
+            - ./data/prometheus1_data:/prometheus
+            - ./prometheus/prometheus1.yaml:/etc/prometheus/prometheus.yaml
+            - *prometheus-volumes
+        ports:
+            - 9081:9090
+        restart: always
+
+    prometheus-2:
+        <<: *prometheus-app
+        volumes:
+            - ./data/prometheus2_data:/prometheus
+            - ./prometheus/prometheus2.yaml:/etc/prometheus/prometheus.yaml
+            - *prometheus-volumes
+        ports:
+            - 9082:9090
+        restart: always
+
+    prometheus-3:
+        <<: *prometheus-app
+        volumes:
+            - ./data/prometheus3_data:/prometheus
+            - ./prometheus/prometheus3.yaml:/etc/prometheus/prometheus.yaml
+            - *prometheus-volumes
+        ports:
+            - 9083:9090
+        restart: always
+
+    prometheus-4:
+        <<: *prometheus-app
+        volumes:
+            - ./data/prometheus4_data:/prometheus
+            - ./prometheus/prometheus4.yaml:/etc/prometheus/prometheus.yaml
+            - *prometheus-volumes
+        ports:
+            - 9084:9090
+        restart: always
+
+    thanos-sidecar-1:
+        <<: *thanos-sidecar
+        volumes:
+            - *thanos-volumes
+            - ./data/prometheus1_data:/prometheus
+        command:
+            - 'sidecar'
+            - '--tsdb.path=/prometheus'
+            - '--grpc-address=0.0.0.0:10091'
+            - '--http-address=0.0.0.0:10902'
+            - '--objstore.config-file=/etc/thanos/bucket_config.yaml'
+            - '--prometheus.url=http://prometheus-1:9090'
+        depends_on:
+            - prometheus-1
+            - *thanos-depends-on
+
+    thanos-sidecar-2:
+        <<: *thanos-sidecar
+        volumes:
+            - *thanos-volumes
+            - ./data/prometheus2_data:/prometheus
+        command:
+            - 'sidecar'
+            - '--tsdb.path=/prometheus'
+            - '--grpc-address=0.0.0.0:10091'
+            - '--http-address=0.0.0.0:10902'
+            - '--objstore.config-file=/etc/thanos/bucket_config.yaml'
+            - '--prometheus.url=http://prometheus-2:9090'
+        depends_on:
+            - prometheus-2
+            - *thanos-depends-on
+            
+    thanos-sidecar-3:
+        <<: *thanos-sidecar
+        volumes:
+            - *thanos-volumes
+            - ./data/prometheus3_data:/prometheus
+        command:
+            - 'sidecar'
+            - '--tsdb.path=/prometheus'
+            - '--grpc-address=0.0.0.0:10091'
+            - '--http-address=0.0.0.0:10902'
+            - '--objstore.config-file=/etc/thanos/bucket_config.yaml'
+            - '--prometheus.url=http://prometheus-3:9090'
+        depends_on:
+            - prometheus-3
+            - *thanos-depends-on
+
+    thanos-sidecar-4:
+        <<: *thanos-sidecar
+        volumes:
+            - *thanos-volumes
+            - ./data/prometheus4_data:/prometheus
+        command:
+            - 'sidecar'
+            - '--tsdb.path=/prometheus'
+            - '--grpc-address=0.0.0.0:10091'
+            - '--http-address=0.0.0.0:10902'
+            - '--objstore.config-file=/etc/thanos/bucket_config.yaml'
+            - '--prometheus.url=http://prometheus-4:9090'
+        depends_on:
+            - prometheus-4
+            - *thanos-depends-on
+
+    thanos-query-frontend:
+        image: quay.io/thanos/thanos:v0.31.0
+        command:
+            - 'query-frontend'
+            - '--http-address=0.0.0.0:10901'
+            - '--query-frontend.downstream-url=http://thanos-querier:10902'
+        ports:
+            - 10901:10901
+        depends_on:
+            - thanos-querier
+        networks:
+            - thanos-example
+        restart: always
+
+    thanos-querier:
+        image: quay.io/thanos/thanos:v0.31.0
+        command:
+            - 'query'
+            - '--grpc-address=0.0.0.0:10091'
+            - '--http-address=0.0.0.0:10902'
+            - '--query.replica-label=replica'
+            - '--store=thanos-sidecar-1:10091'
+            - '--store=thanos-sidecar-2:10091'
+            - '--store=thanos-sidecar-3:10091'
+            - '--store=thanos-sidecar-4:10091'
+            - '--store=thanos-store-gateway:10091'
+            - '--store=thanos-ruler:10091'
+        ports:
+            - 10902:10902
+        depends_on:
+            - thanos-sidecar-1
+            - thanos-sidecar-2
+            - thanos-sidecar-3
+            - thanos-sidecar-4
+        networks:
+            - thanos-example
+        restart: always
+
+    thanos-store-gateway:
+        image: quay.io/thanos/thanos:v0.31.0
+        volumes:
+            - ./thanos/:/etc/thanos/
+        command:
+            - 'store'
+            - '--grpc-address=0.0.0.0:10091'
+            - '--http-address=0.0.0.0:10902'
+            - '--data-dir=/tmp/thanos/store'
+            - '--objstore.config-file=/etc/thanos/bucket_config.yaml'
+        depends_on:
+            - minio
+        networks:
+            - thanos-example
+        restart: always
+
+    thanos-compactor:
+        image: quay.io/thanos/thanos:v0.31.0
+        volumes:
+            - ./thanos/:/etc/thanos/
+        command:
+            - 'compact'
+            - '--log.level=debug'
+            - '--data-dir=/data'
+            - '--objstore.config-file=/etc/thanos/bucket_config.yaml'
+            - '--wait'
+        depends_on:
+            - minio
+        networks:
+            - thanos-example
+        restart: always
+
+    thanos-ruler:
+        image: quay.io/thanos/thanos:v0.31.0
+        volumes:
+            - ./thanos/:/etc/thanos/
+        command:
+            - 'rule'
+            - '--grpc-address=0.0.0.0:10091'
+            - '--http-address=0.0.0.0:10902'
+            - '--log.level=debug'
+            - '--data-dir=/data'
+            - '--eval-interval=15s'
+            - '--rule-file=/etc/thanos/*.rules.yaml'
+            - '--alertmanagers.url=http://alertmanager:9093'
+            - '--query=thanos-querier:10902'
+            - '--objstore.config-file=/etc/thanos/bucket_config.yaml'
+            - "--label=ruler_cluster=\"vegas\""
+            - "--label=ruler_replica=\"r1\""
+        ports:
+            - 10903:10902
+        depends_on:
+            - minio
+            - thanos-querier
+        networks:
+            - thanos-example
+        restart: always
+
+    thanos-bucket-web:
+        image: quay.io/thanos/thanos:v0.31.0
+        volumes:
+            - ./thanos/:/etc/thanos/
+        command:
+            - 'tools'
+            - 'bucket'
+            - 'web'
+            - '--http-address=0.0.0.0:10902'
+            - '--log.level=debug'
+            - '--objstore.config-file=/etc/thanos/bucket_config.yaml'
+            - '--refresh=5m'
+            - '--timeout=2m'
+            - '--label=replica'
+        ports:
+            - 10904:10902
+        depends_on:
+            - minio
+        networks:
+            - thanos-example
+        restart: always
+
+    minio:
+        image: minio/minio:RELEASE.2020-05-01T22-19-14Z
+        volumes:
+            - ./data/minio_data:/data
+        entrypoint: sh
+        command: -c 'mkdir -p /data/demo-bucket && /usr/bin/minio server /data'
+        environment:
+            - MINIO_ACCESS_KEY=admin
+            - MINIO_SECRET_KEY=password
+            - MINIO_PROMETHEUS_AUTH_TYPE=public
+        ports:
+            - 9000:9000
+        networks:
+            - thanos-example
+
+    node-exporter:
+        image: prom/node-exporter:v1.5.0
+        # volumes:
+            # - /proc:/host/proc:ro
+            # - /sys:/host/sys:ro
+            # - /:/rootfs:ro
+        command:
+            # - '--path.procfs=/host/proc'
+            # - '--path.sysfs=/host/sys'
+            - --collector.filesystem.ignored-mount-points
+            - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+        ports:
+            - 9100:9100
+        networks:
+            - thanos-example
+        restart: always
+
+    alertmanager:
+        image: prom/alertmanager:v0.25.0
+        ports:
+            - 9093:9093
+        volumes:
+            - ./alertmanager/:/etc/alertmanager/
+        restart: always
+        command:
+            - '--config.file=/etc/alertmanager/config.yaml'
+            - '--storage.path=/alertmanager'
+        networks:
+            - thanos-example
+
+    # cadvisor:
+    #     image: gcr.io/google_containers/cadvisor:v0.36.0
+    #     volumes:
+    #         - /:/rootfs:ro
+    #         - /var/run:/var/run:rw
+    #         - /sys:/sys:ro
+    #         - /var/lib/docker/:/var/lib/docker:ro
+    #     ports:
+    #         - 8080:8080
+    #     restart: always
+
+    grafana:
+        image: grafana/grafana:9.4.7
+        user: "104"
+        depends_on:
+            - prometheus-1
+            - prometheus-2
+        ports:
+            - 3000:3000
+        volumes:
+            - ./data/grafana_data:/var/lib/grafana
+            - ./grafana/provisioning/:/etc/grafana/provisioning/
+        # env_file:
+        #     - ./grafana/config.monitoring
+        restart: always
+        networks:
+            - thanos-example
+
+networks:
+  thanos-example:
+    driver: bridge
