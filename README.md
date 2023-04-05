@@ -2,7 +2,7 @@
 
 This project was created for experimenting with the monitoring tools.
 
-![grafana](./docs/grafana.png)
+<img src="./docs/grafana.png" width="300">
 
 projects | Description
 -----|-----
