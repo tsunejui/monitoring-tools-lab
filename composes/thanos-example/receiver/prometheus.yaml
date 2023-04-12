@@ -1,0 +1,25 @@
+global:
+  scrape_interval: 10s
+  evaluation_interval: 60s
+
+remote_write:
+  - url: "http://stream:8080/api/v1/receive"
+    queue_config:
+      max_samples_per_send: 500
+      batch_send_deadline: 5s
+      min_backoff: 50ms
+      max_backoff: 500ms
+
+scrape_configs:
+  - job_name: "prometheus"
+    static_configs:
+      - targets: ["127.0.0.1:9090"]
+  
+  - job_name: 'node-exporter'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['node-exporter:9100']
+      
+  - job_name: "thanos"
+    static_configs:
+      - targets: ["thanos-01:10902", "thanos-02:10902", "thanos-03:10902"]

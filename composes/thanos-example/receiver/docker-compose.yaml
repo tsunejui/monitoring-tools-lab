@@ -1,0 +1,186 @@
+# usage:
+#   docker-compose -f composes/thanos-example/receiver/docker-compose.yaml up
+version: '3.2'
+
+networks:
+  thanos-receiver-example:
+    driver: bridge
+
+services:
+
+  stream:
+    image: nginx:1.23.3
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - 8080:8080
+    networks:
+      - thanos-receiver-example
+
+  minio:
+    image: minio/minio:RELEASE.2020-05-01T22-19-14Z
+    volumes:
+        - ./data/minio_data:/data
+    entrypoint: sh
+    command: -c 'mkdir -p /data/demo-bucket && /usr/bin/minio server /data'
+    environment:
+        - MINIO_ACCESS_KEY=admin
+        - MINIO_SECRET_KEY=password
+        - MINIO_PROMETHEUS_AUTH_TYPE=public
+    ports:
+      - 9000:9000
+    networks:
+      - thanos-receiver-example
+
+  node-exporter:
+    image: prom/node-exporter:v1.5.0
+    command:
+        - --collector.filesystem.ignored-mount-points
+        - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+    ports:
+        - 9100:9100
+    networks:
+        - thanos-receiver-example
+    restart: always
+
+  prometheus:
+    image: prom/prometheus:v2.43.0
+    command:
+        - '--config.file=/etc/prometheus/prometheus.yaml'
+        - '--storage.tsdb.path=/prometheus'
+        - '--storage.tsdb.retention.time=24h'
+        - '--storage.tsdb.max-block-duration=2h'
+        - '--storage.tsdb.min-block-duration=32h'
+        - '--web.enable-lifecycle'
+        - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+        - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: always
+    depends_on:
+      - node-exporter
+      - stream
+    ports:
+      - 9090:9090
+    volumes:
+      - ./data/prometheus:/prometheus
+      - ./prometheus.yaml:/etc/prometheus/prometheus.yaml
+    networks:
+      - thanos-receiver-example
+
+  query:
+    image: quay.io/thanos/thanos:v0.31.0
+    ports:
+      - 10902:10902
+    command: >
+      query
+      --log.format=logfmt
+      --query.replica-label=replica
+      --store=thanos-01:10901
+      --store=thanos-02:10901
+      --store=thanos-03:10901
+      --store=store-gateway:10091
+    depends_on:
+      - thanos-01
+      - thanos-02
+      - thanos-03
+    networks:
+      - thanos-receiver-example
+
+  store-gateway:
+    image: quay.io/thanos/thanos:v0.31.0
+    volumes:
+        - ./thanos/:/etc/thanos/
+    command:
+        - 'store'
+        - '--grpc-address=0.0.0.0:10091'
+        - '--http-address=0.0.0.0:10902'
+        - '--data-dir=/tmp/thanos/store'
+        - '--objstore.config-file=/etc/thanos/bucket_config.yaml'
+    depends_on:
+        - minio
+    networks:
+        - thanos-receiver-example
+
+  thanos-01:
+    image: quay.io/thanos/thanos:v0.31.0
+    ports:
+      - 10902
+      - 10901
+      - 19291
+    depends_on:
+      - minio
+    volumes:
+      - ./thanos/:/etc/thanos/
+      - ./data/thanos-01:/data
+    command: >
+      receive
+      --grpc-address=0.0.0.0:10901
+      --remote-write.address=0.0.0.0:19291
+      --objstore.config-file=/etc/thanos/bucket_config.yaml
+      --log.level=debug
+      --log.format=logfmt
+      --tsdb.path=/data
+      --tsdb.retention=3m
+      --tsdb.min-block-duration=1m
+      --tsdb.max-block-duration=1m
+      --receive.replication-factor=2
+      --receive.hashrings-file=/etc/thanos/hashring.json
+      --label=replica='"thanos-01"'
+      --receive.local-endpoint="thanos-01:10901"
+    networks:
+      - thanos-receiver-example
+
+  thanos-02:
+    image: quay.io/thanos/thanos:v0.31.0
+    ports:
+      - 10902
+      - 10901
+      - 19291
+    depends_on:
+      - minio
+    volumes:
+      - ./thanos/:/etc/thanos/
+      - ./data/thanos-02:/data
+    command: >
+      receive
+      --grpc-address=0.0.0.0:10901
+      --remote-write.address=0.0.0.0:19291
+      --log.level=debug
+      --log.format=logfmt
+      --tsdb.path=/data
+      --tsdb.retention=3m
+      --tsdb.min-block-duration=1m
+      --tsdb.max-block-duration=1m
+      --receive.replication-factor=2
+      --receive.hashrings-file=/etc/thanos/hashring.json
+      --label=replica='"thanos-02"'
+      --receive.local-endpoint="thanos-02:10901"
+    networks:
+      - thanos-receiver-example
+
+  thanos-03:
+    image: quay.io/thanos/thanos:v0.31.0
+    ports:
+      - 10902
+      - 10901
+      - 19291
+    depends_on:
+      - minio
+    volumes:
+      - ./thanos/:/etc/thanos/
+      - ./data/thanos-03:/data
+    command: >
+      receive
+      --grpc-address=0.0.0.0:10901
+      --remote-write.address=0.0.0.0:19291
+      --log.level=debug
+      --log.format=logfmt
+      --tsdb.path=/data
+      --tsdb.retention=3m
+      --tsdb.min-block-duration=1m
+      --tsdb.max-block-duration=1m
+      --receive.replication-factor=2
+      --receive.hashrings-file=/etc/thanos/hashring.json
+      --label=replica='"thanos-03"'
+      --receive.local-endpoint="thanos-03:10901"
+    networks:
+      - thanos-receiver-example

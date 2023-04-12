@@ -1,0 +1,15 @@
+version: '3.2'
+
+services:
+  grafana:
+    image: grafana/grafana:9.4.7
+    ports:
+        - 3000:3000
+    volumes:
+        - ./grafana_data:/var/lib/grafana
+    restart: always
+    networks:
+        - grafna-migration
+networks:
+  grafna-migration:
+    driver: bridge

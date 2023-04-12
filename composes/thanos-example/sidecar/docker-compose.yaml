@@ -1,11 +1,11 @@
----
 version: '3.2'
 
-x-prometheus-app: &prometheus-app
+x-prometheus-app:
+    &prometheus-app
     image: prom/prometheus:v2.43.0
     links:
-      # - cadvisor:cadvisor
-      - alertmanager:alertmanager
+        # - cadvisor:cadvisor
+        - alertmanager:alertmanager
     command:
         - '--config.file=/etc/prometheus/prometheus.yaml'
         - '--storage.tsdb.path=/prometheus'
@@ -16,25 +16,23 @@ x-prometheus-app: &prometheus-app
         - '--web.console.libraries=/usr/share/prometheus/console_libraries'
         - '--web.console.templates=/usr/share/prometheus/consoles'
     networks:
-      - thanos-example
+        - thanos-sidecar-example
     # depends_on:
     #   - cadvisor
     restart: always
 
-x-prometheus-volumes: &prometheus-volumes
-    ./prometheus/alert.rules:/etc/prometheus/alert.rules
+x-prometheus-volumes: &prometheus-volumes ./prometheus/alert.rules:/etc/prometheus/alert.rules
 
-x-thanos-sidecar: &thanos-sidecar
+x-thanos-sidecar:
+    &thanos-sidecar
     image: quay.io/thanos/thanos:v0.31.0
     restart: always
     networks:
-      - thanos-example
+        - thanos-sidecar-example
 
-x-thanos-depends-on: &thanos-depends-on
-    minio
+x-thanos-depends-on: &thanos-depends-on minio
 
-x-thanos-volumes: &thanos-volumes
-    ./thanos/:/etc/thanos/
+x-thanos-volumes: &thanos-volumes ./thanos/:/etc/thanos/
 
 services:
     prometheus-1:
@@ -108,7 +106,7 @@ services:
         depends_on:
             - prometheus-2
             - *thanos-depends-on
-            
+
     thanos-sidecar-3:
         <<: *thanos-sidecar
         volumes:
@@ -152,7 +150,7 @@ services:
         depends_on:
             - thanos-querier
         networks:
-            - thanos-example
+            - thanos-sidecar-example
         restart: always
 
     thanos-querier:
@@ -176,7 +174,7 @@ services:
             - thanos-sidecar-3
             - thanos-sidecar-4
         networks:
-            - thanos-example
+            - thanos-sidecar-example
         restart: always
 
     thanos-store-gateway:
@@ -192,7 +190,7 @@ services:
         depends_on:
             - minio
         networks:
-            - thanos-example
+            - thanos-sidecar-example
         restart: always
 
     thanos-compactor:
@@ -208,7 +206,7 @@ services:
         depends_on:
             - minio
         networks:
-            - thanos-example
+            - thanos-sidecar-example
         restart: always
 
     thanos-ruler:
@@ -234,7 +232,7 @@ services:
             - minio
             - thanos-querier
         networks:
-            - thanos-example
+            - thanos-sidecar-example
         restart: always
 
     thanos-bucket-web:
@@ -256,7 +254,7 @@ services:
         depends_on:
             - minio
         networks:
-            - thanos-example
+            - thanos-sidecar-example
         restart: always
 
     minio:
@@ -272,14 +270,14 @@ services:
         ports:
             - 9000:9000
         networks:
-            - thanos-example
+            - thanos-sidecar-example
 
     node-exporter:
         image: prom/node-exporter:v1.5.0
         # volumes:
-            # - /proc:/host/proc:ro
-            # - /sys:/host/sys:ro
-            # - /:/rootfs:ro
+        # - /proc:/host/proc:ro
+        # - /sys:/host/sys:ro
+        # - /:/rootfs:ro
         command:
             # - '--path.procfs=/host/proc'
             # - '--path.sysfs=/host/sys'
@@ -288,7 +286,7 @@ services:
         ports:
             - 9100:9100
         networks:
-            - thanos-example
+            - thanos-sidecar-example
         restart: always
 
     alertmanager:
@@ -302,7 +300,7 @@ services:
             - '--config.file=/etc/alertmanager/config.yaml'
             - '--storage.path=/alertmanager'
         networks:
-            - thanos-example
+            - thanos-sidecar-example
 
     # cadvisor:
     #     image: gcr.io/google_containers/cadvisor:v0.36.0
@@ -330,8 +328,8 @@ services:
         #     - ./grafana/config.monitoring
         restart: always
         networks:
-            - thanos-example
+            - thanos-sidecar-example
 
 networks:
-  thanos-example:
-    driver: bridge
+    thanos-sidecar-example:
+        driver: bridge
