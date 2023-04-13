@@ -1,0 +1,20 @@
+@startuml receiver-example
+
+agent "Node Exporter" as ne
+agent "Prometheus" as pt
+agent "Nginx" as nginx #FF6655
+agent "Thanos Receiver 01" as r1 #ff00ff
+agent "Thanos Receiver 02" as r2 #ff00ff
+agent "Thanos Receiver 03" as r3 #ff00ff
+agent "Store Gateway" as sg
+database "MinIO" as minio
+
+ne <-- pt : scrape
+pt --> nginx : send
+nginx --> r1 : proxy
+nginx --> r2 : proxy
+nginx --> r3 : proxy
+sg --> minio : access
+r1 --> minio : upload
+
+@enduml
