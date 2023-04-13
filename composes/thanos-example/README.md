@@ -19,5 +19,6 @@ Receiver | The thanos receive command implements the Prometheus Remote Write API
 
 ### Reference
 
+- [OpenShift Container Platform monitoring stack](https://docs.openshift.com/container-platform/4.10/monitoring/monitoring-overview.html)
 - [Introducing Thanos: Prometheus at scale](https://www.improbable.io/blog/thanos-prometheus-at-scale)
 - [Thanos Querier Versus Thanos Querier](https://cloud.redhat.com/blog/thanos-querier-versus-thanos-querier)
