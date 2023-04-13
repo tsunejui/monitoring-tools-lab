@@ -1,15 +1,57 @@
+# usage:
+#   docker-compose -f composes/grafana-migrate/docker-compose.yaml up grafana
+#   docker-compose -f composes/grafana-migrate/docker-compose.yaml up postgres
+#   docker-compose -f composes/grafana-migrate/docker-compose.yaml run pgloader
 version: '3.2'
 
 services:
   grafana:
     image: grafana/grafana:9.4.7
+    environment:
+      GF_DATABASE_URL: postgres://postgres:postgres@postgres/grafana
     ports:
         - 3000:3000
     volumes:
-        - ./grafana_data:/var/lib/grafana
+        - ./data/grafana:/var/lib/grafana
     restart: always
+    depends_on:
+      - postgres
     networks:
         - grafna-migration
+
+  postgres:
+    image: postgres:14.6
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGDATA: /data/postgres
+    volumes:
+      - ./data/postgres:/data/postgres
+    ports:
+      - 25432:5432
+    networks:
+      - grafna-migration
+
+
+  pgloader:
+    image: ghcr.io/dimitri/pgloader:3.6.9
+    volumes:
+      - ./pgloader:/app
+      - ./data/grafana:/data
+    networks:
+      - grafna-migration
+    # command: pgloader /app/test.load
+    command: pgloader /app/main.load
+    restart: "no"
+
 networks:
   grafna-migration:
     driver: bridge
+
+# docker network create grafna-migration
+# docker run --rm -it \
+#  -v $(pwd)/composes/grafana-migrate/data/grafana:/data \
+#  -v $(pwd)/composes/grafana-migrate/pgloader:/app \
+#  --network grafna-migration \
+#  ghcr.io/dimitri/pgloader:3.6.9 \
+#  pgloader /app/main.load

@@ -20,3 +20,4 @@ Receiver | The thanos receive command implements the Prometheus Remote Write API
 ### Reference
 
 - [Introducing Thanos: Prometheus at scale](https://www.improbable.io/blog/thanos-prometheus-at-scale)
+- [Thanos Querier Versus Thanos Querier](https://cloud.redhat.com/blog/thanos-querier-versus-thanos-querier)
