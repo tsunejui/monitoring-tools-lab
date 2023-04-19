@@ -1,0 +1,16 @@
+POST http://localhost:9093/api/v1/alerts
+Content-Type: application/json
+
+[{
+  "labels": {
+    "alertname": "test",
+    "service": "my-service",
+    "severity": "warning",
+    "instance": "test.example.net",
+    "notify": "email,pagerduty"
+  },
+  "annotations": {
+    "summary": "High latency is high!"
+  },
+  "generatorURL": "http://prometheus.int.example.net/<generating_expression>"
+}]

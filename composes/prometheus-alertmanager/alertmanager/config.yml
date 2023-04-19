@@ -1,0 +1,21 @@
+route:
+  receiver: pager
+  routes:
+    - receiver: 'pager'
+      mute_time_intervals: 
+        - offwork
+
+mute_time_intervals:
+  - name: offwork
+    time_intervals: 
+      - weekdays: ['saturday', 'sunday']
+      - times:
+        - start_time: 00:00
+          end_time: 09:00
+        - start_time: 18:00
+          end_time: 23:59
+      
+receivers:
+  - name: 'pager'
+    webhook_configs:
+    - url: https://e981-2001-b400-e257-2ec0-c116-ee2d-d78a-51e4.ngrok-free.app # replace with your PagerTree webhook url
