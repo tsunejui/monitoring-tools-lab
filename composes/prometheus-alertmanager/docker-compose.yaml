@@ -1,5 +1,12 @@
 # usage:
 #   docker-compose -f composes/prometheus-alertmanager/docker-compose.yaml up
+# services:
+#   prometheus http://localhost:9090
+#   node-exporter http://localhost:9100
+#   alertmanager http://localhost:9093
+#   grafana http://localhost:3000
+#   blackbox_exporter http://localhost:9115
+
 version: '3.2'
 
 networks:

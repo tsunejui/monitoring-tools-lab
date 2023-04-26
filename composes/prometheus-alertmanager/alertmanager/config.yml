@@ -18,4 +18,4 @@ mute_time_intervals:
 receivers:
   - name: 'pager'
     webhook_configs:
-    - url: https://e981-2001-b400-e257-2ec0-c116-ee2d-d78a-51e4.ngrok-free.app # replace with your PagerTree webhook url
+    - url: http://host.docker.internal:8080 # replace with your PagerTree webhook url

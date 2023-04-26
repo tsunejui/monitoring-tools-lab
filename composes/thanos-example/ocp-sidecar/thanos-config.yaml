@@ -1,0 +1,7 @@
+type: S3
+config:
+  bucket: demo-bucket2
+  access_key: root
+  secret_key: p@ssw0rd
+  endpoint: 127.0.0.1:9199
+  insecure: true
