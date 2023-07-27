@@ -1,0 +1,17 @@
+version: "3.2"
+
+networks:
+  fluent-test:
+
+services:
+  fluentd:
+    image: fluentd:v1.16.0-1.0
+    container_name: fluentd
+    ports:
+      - 24224:24224
+      - 8000:8000
+    networks:
+      - fluent-test
+    volumes:
+      - ./logs:/logs
+      - ./conf/fluent.conf:/fluentd/etc/fluent.conf:ro

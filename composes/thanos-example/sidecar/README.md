@@ -13,6 +13,6 @@ prometheus-2 | 9090 | http://localhost:9081
 prometheus-3 | 9090 | http://localhost:9081
 prometheus-4 | 9090 | http://localhost:9081
 thanos-query-frontend | 10901 | http://localhost:10901
-thanos-querier | 10902 | http://localhost:10902
+thanos-query | 10902 | http://localhost:10902
 thanos-ruler | 10902 | http://localhost:10903
 thanos-bucket-web | 10902 | http://localhost:10904
