@@ -1,0 +1,122 @@
+version: '3.2'
+
+networks:
+  thanos-receiver-debug:
+    driver: bridge
+
+services:
+
+  node-exporter:
+    image: prom/node-exporter:v1.5.0
+    command:
+        - --collector.filesystem.ignored-mount-points
+        - "^/(sys|proc|dev|host|etc|rootfs/var/lib/docker/containers|rootfs/var/lib/docker/overlay2|rootfs/run/docker/netns|rootfs/var/lib/docker/aufs)($$|/)"
+    ports:
+        - 9100:9100
+    networks:
+        - thanos-receiver-debug
+    restart: always
+
+  prometheus-1:
+    image: prom/prometheus:v2.43.0
+    command:
+        - '--config.file=/conf/prometheus/prometheus-1.yaml'
+        - '--storage.tsdb.path=/prometheus'
+        - '--storage.tsdb.retention.time=24h'
+        - '--storage.tsdb.max-block-duration=2h'
+        - '--storage.tsdb.min-block-duration=32h'
+        - '--web.enable-lifecycle'
+        - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+        - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: always
+    depends_on:
+      - node-exporter
+    ports:
+      - 9091:9090
+    volumes:
+      - ./data/prometheus-1:/prometheus
+      - ./prometheus:/conf/prometheus
+    networks:
+      - thanos-receiver-debug
+
+  prometheus-2:
+    image: prom/prometheus:v2.17.1
+    command:
+        - '--config.file=/conf/prometheus/prometheus-2.yaml'
+        - '--storage.tsdb.path=/prometheus'
+        - '--storage.tsdb.retention.time=24h'
+        - '--storage.tsdb.max-block-duration=2h'
+        - '--storage.tsdb.min-block-duration=32h'
+        - '--web.enable-lifecycle'
+        - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+        - '--web.console.templates=/usr/share/prometheus/consoles'
+    restart: always
+    depends_on:
+      - node-exporter
+    ports:
+      - 9092:9090
+    volumes:
+      - ./data/prometheus-2:/prometheus
+      - ./prometheus:/conf/prometheus
+    networks:
+      - thanos-receiver-debug
+
+  query:
+    image: quay.io/thanos/thanos:v0.31.0
+    ports:
+      - 10902:10902
+    command: >
+      query
+      --log.format=logfmt
+      --query.replica-label=replica
+      --store=thanos-1:10901
+    depends_on:
+      - thanos-1
+    networks:
+      - thanos-receiver-debug
+
+# --receive.hashrings-file=/etc/thanos/hashring.json
+# --log.level=debug
+  thanos-1:
+    image: quay.io/thanos/thanos:v0.32.4
+    ports:
+      - 10902
+      - 10901
+      - 19291
+    volumes:
+      - ./thanos/:/etc/thanos/
+      - ./data/thanos-1:/data
+    command: >
+      receive
+      --grpc-address=0.0.0.0:10901
+      --remote-write.address=0.0.0.0:19291
+      --log.format=logfmt
+      --tsdb.path=/data
+      --tsdb.retention=3m
+      --tsdb.min-block-duration=1m
+      --tsdb.max-block-duration=1m
+      --label=replica='"thanos-receiver"'
+    networks:
+      - thanos-receiver-debug
+
+  thanos-2:
+    image: quay.io/thanos/thanos:v0.32.4
+    ports:
+      - 10902
+      - 10901
+      - 19291
+    volumes:
+      - ./thanos/:/etc/thanos/
+      - ./data/thanos-2:/data
+    command: >
+      receive
+      --grpc-address=0.0.0.0:10901
+      --remote-write.address=0.0.0.0:19291
+      --log.format=logfmt
+      --tsdb.path=/data
+      --tsdb.retention=3m
+      --tsdb.min-block-duration=1m
+      --tsdb.max-block-duration=1m
+      --label=replica='"thanos-receiver"'
+    networks:
+      - thanos-receiver-debug

@@ -1,0 +1,8 @@
+[
+    {
+        "name": "nginx",
+        "listen": "[::]:8080",
+        "upstream": "127.0.0.1:80",
+        "enabled": true
+    }
+]

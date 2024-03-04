@@ -1,0 +1,5 @@
+[{
+    "hashring": "default",
+    "endpoints": ["thanos:10901"],
+    "tenants": []
+}]

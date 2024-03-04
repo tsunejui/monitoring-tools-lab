@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: latency-server
+  name: latency-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: latency-server
+  template:
+    metadata:
+      labels:
+        app: latency-server
+    spec:
+      volumes:
+        - name: toxiproxy-conf
+          configMap:
+            name: toxiproxy-conf
+      containers:
+        - image: docker.io/nginx:1.25
+          name: nginx
+        - image: ghcr.io/shopify/toxiproxy:2.6.0
+          name: toxiproxy
+          ports:
+            - containerPort: 8474
+# curl -X POST http://127.0.0.1:8474/reset
+# curl -X GET http://127.0.0.1:8474/proxies
+# curl -X DELETE http://127.0.0.1:8474/proxies/web
+# curl -X POST -d '{"name": "web", "listen": "[::]:8080", "upstream": "127.0.0.1:80", "enabled": true}' http://127.0.0.1:8474/proxies
+# curl -X POST -d '{"name": "latency", "type": "latency", "attributes": {"latency": 20000}}' http://127.0.0.1:8474/proxies/web/toxics
+#  for ((i = 1; i <= 5; i++)); do echo "number: $i"; done
+#  for ((i = 1; i <= 25000; i++)); do curl -s http://latency-server.apps.ocp.olg.online.com & done
+#
+# ---
+# apiVersion: v1
+# data:
+#   toxiproxy.json: |-
+#     [
+#         {
+#             "name": "nginx",
+#             "listen": "[::]:80",
+#             "upstream": "127.0.0.1:80",
+#             "enabled": true
+#         }
+#     ]
+# kind: ConfigMap
+# metadata:
+#   creationTimestamp: null
+#   name: toxiproxy-conf
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: latency-server
+  labels:
+    app: latency-server
+spec:
+  ports:
+    - port: 8080
+      name: web
+      protocol: TCP
+      targetPort: 8080
+    - port: 8474
+      name: proxy
+      protocol: TCP
+      targetPort: 8474
+  selector:
+    app: latency-server
